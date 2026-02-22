@@ -1,9 +1,8 @@
 package com.hnp.security;
 
-import com.hnp.resource.EmployeeResource;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import io.smallrye.jwt.algorithm.SignatureAlgorithm;
 import io.smallrye.jwt.build.Jwt;
+
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -11,19 +10,20 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.io.File;
-import java.io.IOException;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Logger;
+
+import jakarta.inject.Inject;
 
 @Path("/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -65,6 +65,7 @@ public class AuthResource {
     @Path("/login")
     public Response login(LoginRequest loginRequest) throws Exception {
 
+
         PrivateKey privateKey = loadPrivateKey();
 
         if (loginRequest.username == null || loginRequest.password == null) {
@@ -74,19 +75,29 @@ public class AuthResource {
         if ("admin".equals(loginRequest.username) && "admin123".equals(loginRequest.password)) {
             Set<String> roles = new HashSet<String>();
             roles.add("admin");
+            String jti = UUID.randomUUID().toString();
             String token = Jwt.issuer("quarkus-app")
                     .upn(loginRequest.username)
                     .groups(roles)
+                    .claim("jti", jti)
+                    .expiresIn(Duration.ofMinutes(30))
                     .sign(privateKey);
+
+
+
             return Response.ok(new LoginResponse(token)).build();
         }
         if ("user".equals(loginRequest.username) && "user123".equals(loginRequest.password)) {
             Set<String> roles = new HashSet<String>();
             roles.add("user");
+            String jti = UUID.randomUUID().toString();
             String token = Jwt.issuer("quarkus-app")
                     .upn(loginRequest.username)
                     .groups(roles)
-                    .sign();
+                    .claim("jti", jti)
+                    .expiresIn(Duration.ofMinutes(30))
+                    .sign(privateKey);
+
             return Response.ok(new LoginResponse(token)).build();
         }
 

@@ -68,3 +68,11 @@ openssl genpkey -algorithm RSA -out privateKey.pem -pkeyopt rsa_keygen_bits:2048
 openssl rsa -pubout -in privateKey.pem -out publicKey.pem
 
 ```
+
+---
+
+## Build Docker image (native executable)
+
+```dockerfile
+docker build -f src\main\docker\Dockerfile.native -t quarkus-native-app:0.1 .
+```
