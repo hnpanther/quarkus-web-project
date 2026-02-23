@@ -83,11 +83,13 @@ public class JwtAuthFilter implements ContainerRequestFilter {
 
 
 
+        String username = jwt.getClaim("upn");
         String jti = jwt.getClaim("jti");
-        boolean exists = redisService.exists(jti).await().indefinitely();
-        if (!exists) {
+        String redisKey = "user:" + username;
+        String savedJti = redisService.get(redisKey).await().indefinitely();
+
+        if (!jti.equals(savedJti)) {
             containerRequestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
-            return;
         }
 
 
