@@ -30,8 +30,8 @@ public class EmployeeResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
 //    @RolesAllowed({"admin", "user"})
-    @RolesAllowed({"ADMIN"})
-//    @Authenticated
+//    @RolesAllowed({"ADMIN"})
+    @Authenticated
     public List<Employee> getEmployees() {
         log.log(Level.INFO, "getEmployees()");
         return employeeService.getEmployees();

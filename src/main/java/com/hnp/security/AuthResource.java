@@ -3,9 +3,11 @@ package com.hnp.security;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.hnp.entity.Role;
 import com.hnp.entity.User;
+import com.hnp.service.RedisService;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.smallrye.jwt.build.Jwt;
 
+import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -33,6 +35,9 @@ import jakarta.inject.Inject;
 public class AuthResource {
 
     private static final Logger log = Logger.getLogger(AuthResource.class.getName());
+
+    @Inject
+    RedisService redisService;
 
 
     public static class LoginRequest {
@@ -65,28 +70,28 @@ public class AuthResource {
 
     @POST
     @Path("/login")
-    public Response login(LoginRequest loginRequest) throws Exception {
+    public Uni<Response> login(LoginRequest loginRequest) throws Exception {
         log.log(Level.INFO, "Login Request: " + loginRequest);
 
         PrivateKey privateKey = loadPrivateKey();
 
         if (loginRequest.username == null || loginRequest.password == null) {
             log.log(Level.WARNING, "Login Request: username or password is null!");
-            return Response.status(Response.Status.BAD_REQUEST).build();
+            return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST).build());
         }
 
         User user = User.find("username", loginRequest.username).firstResult();
 
         if (user == null) {
             log.log(Level.WARNING, "Login Request: user not found!");
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            return Uni.createFrom().item(Response.status(Response.Status.UNAUTHORIZED).build());
         }
 
         BCrypt.Result result = BCrypt.verifyer().verify(loginRequest.password.toCharArray(), user.password.toCharArray());
 
         if (!result.verified) {
             log.log(Level.WARNING, "Login Request: password verification failed!");
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            return Uni.createFrom().item(Response.status(Response.Status.UNAUTHORIZED).build());
         }
 
         List<Role> roles = Role.list("_id in ?1", user.roleIds);
@@ -101,7 +106,19 @@ public class AuthResource {
                 .expiresIn(Duration.ofMinutes(30))
                 .sign(privateKey);
         log.log(Level.INFO, "Login Request: jti: " + jti);
-        return Response.ok(new LoginResponse(token)).build();
+
+
+        return redisService.setEx(jti, token, 30 * 60)
+                .onItem().transform(unused -> {
+                    log.info("jwt saved in redis. jti: " + jti);
+                    return Response.ok(new LoginResponse(token)).build();
+                })
+                .onFailure().recoverWithItem(th -> {
+                    log.warning("Login failed to save JWT: " + th.getMessage());
+                    return Response.status(Response.Status.UNAUTHORIZED).build();
+                });
+
+
 
 
     }
