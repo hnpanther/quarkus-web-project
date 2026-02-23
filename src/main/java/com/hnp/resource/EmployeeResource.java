@@ -3,6 +3,7 @@ package com.hnp.resource;
 import com.hnp.model.Employee;
 import com.hnp.service.EmployeeService;
 import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -29,7 +30,8 @@ public class EmployeeResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
 //    @RolesAllowed({"admin", "user"})
-    @Authenticated
+    @RolesAllowed({"ADMIN"})
+//    @Authenticated
     public List<Employee> getEmployees() {
         log.log(Level.INFO, "getEmployees()");
         return employeeService.getEmployees();

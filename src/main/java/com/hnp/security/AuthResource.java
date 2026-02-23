@@ -1,5 +1,8 @@
 package com.hnp.security;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
+import com.hnp.entity.Role;
+import com.hnp.entity.User;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.smallrye.jwt.build.Jwt;
 
@@ -17,11 +20,10 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
@@ -64,43 +66,43 @@ public class AuthResource {
     @POST
     @Path("/login")
     public Response login(LoginRequest loginRequest) throws Exception {
-
+        log.log(Level.INFO, "Login Request: " + loginRequest);
 
         PrivateKey privateKey = loadPrivateKey();
 
         if (loginRequest.username == null || loginRequest.password == null) {
+            log.log(Level.WARNING, "Login Request: username or password is null!");
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
 
-        if ("admin".equals(loginRequest.username) && "admin123".equals(loginRequest.password)) {
-            Set<String> roles = new HashSet<String>();
-            roles.add("admin");
-            String jti = UUID.randomUUID().toString();
-            String token = Jwt.issuer("quarkus-app")
-                    .upn(loginRequest.username)
-                    .groups(roles)
-                    .claim("jti", jti)
-                    .expiresIn(Duration.ofMinutes(30))
-                    .sign(privateKey);
+        User user = User.find("username", loginRequest.username).firstResult();
 
-
-
-            return Response.ok(new LoginResponse(token)).build();
-        }
-        if ("user".equals(loginRequest.username) && "user123".equals(loginRequest.password)) {
-            Set<String> roles = new HashSet<String>();
-            roles.add("user");
-            String jti = UUID.randomUUID().toString();
-            String token = Jwt.issuer("quarkus-app")
-                    .upn(loginRequest.username)
-                    .groups(roles)
-                    .claim("jti", jti)
-                    .expiresIn(Duration.ofMinutes(30))
-                    .sign(privateKey);
-
-            return Response.ok(new LoginResponse(token)).build();
+        if (user == null) {
+            log.log(Level.WARNING, "Login Request: user not found!");
+            return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 
-        return Response.status(Response.Status.UNAUTHORIZED).build();
+        BCrypt.Result result = BCrypt.verifyer().verify(loginRequest.password.toCharArray(), user.password.toCharArray());
+
+        if (!result.verified) {
+            log.log(Level.WARNING, "Login Request: password verification failed!");
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+        }
+
+        List<Role> roles = Role.list("_id in ?1", user.roleIds);
+        Set<String> roleNames = roles.stream()
+                .map(r -> r.roleName)
+                .collect(Collectors.toSet());
+        String jti = UUID.randomUUID().toString();
+        String token = Jwt.issuer("quarkus-app")
+                .upn(loginRequest.username)
+                .groups(roleNames)
+                .claim("jti", jti)
+                .expiresIn(Duration.ofMinutes(30))
+                .sign(privateKey);
+        log.log(Level.INFO, "Login Request: jti: " + jti);
+        return Response.ok(new LoginResponse(token)).build();
+
+
     }
 }
