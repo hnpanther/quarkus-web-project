@@ -110,20 +110,23 @@ public class AuthResource {
 
         String redisKey = "user:" + loginRequest.username;
 
-        redisService.get(redisKey)
-                .onItem().ifNotNull().transformToUni(prevJti ->
-                        redisService.delete(redisKey)
+        return redisService.get(redisKey)
+                .onItem().transformToUni(prevJti -> {
+                    if (prevJti != null) {
+                        log.info("Previous JWT found for user: " + loginRequest.username + ", jti: " + prevJti);
+                        return redisService.delete(redisKey)
                                 .onItem().invoke(unused ->
                                         log.info("Previous JWT deleted for user: " + loginRequest.username + ", jti: " + prevJti)
-                                )
-                )
-                .subscribe().with(unused -> {});
-
-        return redisService.setEx(redisKey, jti, 30 * 60)
-                .onItem().transform(unused -> {
-                    log.info("jwt saved in redis. jti: " + jti);
-                    return Response.ok(new LoginResponse(token)).build();
+                                );
+                    } else {
+                        return Uni.createFrom().voidItem();
+                    }
                 })
+                .onItem().transformToUni(unused ->
+                        redisService.setEx(redisKey, jti, 30 * 60)
+                                .onItem().invoke(__ -> log.info("JWT saved in Redis for user: " + loginRequest.username + ", jti: " + jti))
+                )
+                .onItem().transform(unused -> Response.ok(new LoginResponse(token)).build())
                 .onFailure().recoverWithItem(th -> {
                     log.warning("Login failed to save JWT: " + th.getMessage());
                     return Response.status(Response.Status.UNAUTHORIZED).build();
