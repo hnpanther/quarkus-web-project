@@ -1,4 +1,4 @@
-package com.hnp.entity;
+package com.hnp.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

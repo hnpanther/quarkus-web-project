@@ -1,6 +1,6 @@
 package com.hnp.service;
 
-import com.hnp.entity.Employee;
+import com.hnp.model.Employee;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 

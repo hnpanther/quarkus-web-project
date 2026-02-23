@@ -1,10 +1,8 @@
 package com.hnp.resource;
 
-import com.hnp.entity.Employee;
+import com.hnp.model.Employee;
 import com.hnp.service.EmployeeService;
 import io.quarkus.security.Authenticated;
-import jakarta.annotation.security.RolesAllowed;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
