@@ -1,0 +1,60 @@
+
+
+services:
+
+  mongo:
+    image: mongo:8.2.6-rc0
+    container_name: mongo-db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: appdb
+    # volumes:
+    #   - ./mongo-data:/data/db
+    #   - ./mongo-config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
+
+
+  redis:
+    image: redis:8.2.1
+    container_name: redis-db
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - backend
+
+
+  myapp:
+    image: quarkus-native-app:0.1
+    container_name: my-quarkus-app
+    ports:
+      - "8123:8123"
+    environment:
+      QUARKUS_HTTP_PORT: 8123
+      QUARKUS_REDIS_HOSTS: redis://redis:6379
+      QUARKUS_MONGODB_CONNECTION_STRING: "mongodb://admin:admin@mongo:27017/appdb?authSource=admin"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - backend
+
+
+
+networks:
+  backend:
+    driver: bridge

@@ -76,3 +76,4 @@ openssl rsa -pubout -in privateKey.pem -out publicKey.pem
 ```dockerfile
 docker build -f src\main\docker\Dockerfile.native -t quarkus-native-app:0.1 .
 ```
+
