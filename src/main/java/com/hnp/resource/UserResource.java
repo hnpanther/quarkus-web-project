@@ -3,6 +3,8 @@ package com.hnp.resource;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.hnp.entity.User;
 import com.hnp.service.UserService;
+import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -24,6 +26,7 @@ public class UserResource {
     UserService userService;
 
     @POST
+    @RolesAllowed("ADMIN")
     public Response createUser(User user) {
         log.log(Level.INFO, "Creating User" + user.toString());
         user.password = BCrypt.withDefaults().hashToString(12, user.password.toCharArray());
@@ -33,6 +36,7 @@ public class UserResource {
 
     @GET
     @Path("/{id}")
+    @Authenticated
     public Response getUser(@PathParam("id") String id) {
         log.log(Level.INFO, "Getting User with id: " + id);
         Optional<User> user = userService.findById(id);
@@ -42,6 +46,7 @@ public class UserResource {
 
 
     @GET
+    @Authenticated
     public List<User> getUsers(
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("50") int size
@@ -53,6 +58,7 @@ public class UserResource {
 
     @GET
     @Path("/search")
+    @Authenticated
     public List<User> searchUsers(
             @QueryParam("query") String query,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -70,6 +76,7 @@ public class UserResource {
 
     @PUT
     @Path("/{id}")
+    @RolesAllowed("ADMIN")
     public Response updateUser(@PathParam("id") String id, User user) {
 
         log.log(Level.INFO, "Updating User with id: " + id + " " + user.toString());
@@ -81,12 +88,23 @@ public class UserResource {
         }
         log.log(Level.INFO, "Found, Updating User with id: " + id);
         user.id = userOptional.get().id;
-        User updatedUser = userService.updateUser(user);
+
+        User existing = userOptional.get();
+
+        if(user.username != null) existing.username = user.username;
+        if(user.password != null) existing.password = BCrypt.withDefaults().hashToString(12, user.password.toCharArray());
+        if(user.firstName != null) existing.firstName = user.firstName;
+        if(user.lastName != null) existing.lastName = user.lastName;
+        if(user.email != null) existing.email = user.email;
+        if(user.roleIds != null) existing.roleIds = user.roleIds;
+
+        User updatedUser = userService.updateUser(existing);
         return Response.ok(updatedUser).build();
     }
 
     @DELETE
     @Path("/{id}")
+    @RolesAllowed("ADMIN")
     public Response deleteUser(@PathParam("id") String id) {
 
         log.log(Level.INFO, "Deleting User with id: " + id);

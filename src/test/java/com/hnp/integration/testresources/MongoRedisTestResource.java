@@ -1,4 +1,4 @@
-package com.hnp.testresources;
+package com.hnp.integration.testresources;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.testcontainers.containers.MongoDBContainer;

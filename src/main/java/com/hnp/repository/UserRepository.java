@@ -38,7 +38,7 @@ public class UserRepository implements PanacheMongoRepository<User> {
 
     public User updateUser(User user) {
         log.log(Level.INFO, "updateUser=" + user);
-        persist(user);
+        persistOrUpdate(user);
         return user;
     }
 
